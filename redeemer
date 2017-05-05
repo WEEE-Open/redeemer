@@ -1,0 +1,55 @@
+#!/bin/bash
+
+'''
+REDEEMER - Hard Disk Drive slaughtering script.
+Author: Stefano Enrico Mendola (aka STE col teschio)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+# L'idea è: per ogni hard disk collegato al sistema...
+
+# Riempi il disco di zeri
+echo "====> Filling /dev/sda with zeros"
+dd if=/dev/zero of=/dev/sda status=progress
+sync
+
+# Riempi il disco di zeri e uno a caso
+echo "===> Filling /dev/sda with random values"
+dd if=/dev/random of=/dev/sda status=progress
+sync
+
+# Riempi il disco di zeri di nuovo
+echo "===> Filling /dev/sda with zeros again"
+dd if=/dev/zero of=/dev/sda status=progress
+sync
+
+# Riempi il disco di zeri e uno a caso un'altra volta
+echo "===> Filling /dev/sda with random values again"
+dd if=/dev/random of=/dev/sda status=progress
+sync
+
+# E per essere proprio sicuri al 99.9% che nel disco non
+# sia rimasto nemmeno un bit di dato riguardante il poliTo,
+# riempiamo nuovamente l'hard disk di zeri, stavolta a una
+# velocità di scrittura di 4 MiB/s
+echo "===> Redeeming /dev/sda from his sins"
+dd bs=4M if=/dev/zero of=/dev/sda status=progress
+sync
+
+# E siccome ci teniamo all'ambiente, spegnamo
+# il calcolatore al termine del massacro.
+echo "===> DONE! Shutting down the machine..."
+shutdown -h now
+
