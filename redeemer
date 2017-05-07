@@ -29,43 +29,42 @@ function tellusage {
 
 function zerofill {
 	echo "===> Filling $1 with zeros... (pass $2)"
-	echo `dd if=/dev/zero of=$1 status=progress bs=1M`
-	echo "===> Sync'ing..."
+	echo `dd if=/dev/zero of=$1 status=progress bs=4M`
+	echo "===> Syncing..."
 	sync
 }
 
 function onefill {
 	echo "===> Filling $1 with ones... (pass $2)"
-	echo `tr '\0' '\377' < /dev/zero | dd of=$1 status=progress bs=1M`
-	echo "===> Sync'ing..."
+	echo `tr '\0' '\377' < /dev/zero | dd of=$1 status=progress bs=4M`
+	echo "===> Syncing..."
 	sync
 }
-
-function randomfill {
-	echo "===> Filling $1 with random values... (pass $2)"
-	echo `dd if=/dev/random of=$1 status=progress bs=1M`
-	echo "===> Sync'ing..."
-	sync
-}
-
 
 function urandomfill {
 	echo "===> Filling $1 with pseudo-random values... (pass $2)"
-	echo `dd if=/dev/urandom of=$1 status=progress bs=1M`
-	echo "===> Sync'ing..."
+	echo `dd if=/dev/urandom of=$1 status=progress bs=4M`
+	echo "===> Syncing..."
+	sync
+}
+
+function redemption {
+	echo "===> Redeeming $1 from his sins... (pass $2)"
+	echo `dd if=/dev/zero of=$1 status=progress`
+	echo "===> Syncing..."
 	sync
 }
 
 # https://stackoverflow.com/a/29754866
 getopt --test > /dev/null
 if [[ $? -ne 4 ]]; then
-	echo "I’m sorry, `getopt --test` failed in this environment."
+	echo "error: `getopt --test` failed in this environment."
 	exit 1
 fi
 
 options=$(getopt --options csh --longoptions check,shutdown,help --name "$0" -- "$@")
 if [[ $? -ne 0 ]]; then
-	echo "Getopt failed"
+	echo "error: getopt failed."
 	exit 2
 fi
 
@@ -124,13 +123,13 @@ if [[ $CHECK -eq 1 ]]; then
 				device=$( echo $hdd | tr -d '/' )
 				echo $( badblocks -s -o ${device}.out $hdd )
 			else
-				echo "$hdd isn't a valid block device"
+				echo "error: $hdd isn't a valid block device"
 				exit 5
 			fi
 		done
 		echo "===> DONE!"
 	else
-		echo "badblocks is not installed"
+		echo "error: /bin/badblocks not found"
 		exit 3
 	fi
 fi
@@ -144,12 +143,12 @@ for hdd in "$@"; do
 		zerofill $hdd 1
 		onefill $hdd 2
 		urandomfill $hdd 3
-		zerofill $hdd 4
+		redemption $hdd 4
 
 		echo "===> [OK] Hard drive $hdd is now clean!"
 	else
 		echo "error: Hard drive $hdd is broken."
-		echo "	 Check the file ${device}.out for more details."
+		echo "       Check the file ${device}.out for more details."
 	fi
 done
 
@@ -157,4 +156,3 @@ done
 if [[ $SHUTDOWN -eq 1 ]]; then
 		echo $( shutdown -h now )
 fi
-
