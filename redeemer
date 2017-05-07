@@ -21,8 +21,8 @@
 # following the C convention and using -eq anyway
 CHECK=0
 SHUTDOWN=0
-# Bullshit code-style ↑
-DRY_RUN=
+# Questionable code-style ↑
+DRY_RUN=0
 DD_PATH=dd
 SHUTDOWN_PATH=shutdown
 
@@ -125,13 +125,13 @@ if [[ $# -lt 1 ]]; then
 	tellusage
 fi
 
-if [ -n $DRY_RUN ]; then
+if [[ $DRY_RUN -eq 1 ]]; then
 	DD_PATH='echo dd'
 	SHUTDOWN_PATH='echo shutdown'
 fi
 
 # Must run as root
-if [ -z $DRY_RUN ] && [[ $EUID -ne 0 ]]; then
+if [[ $DRY_RUN -ne 1 ]] && [[ $EUID -ne 0 ]]; then
 	echo "error: You must run $0 as root!"
 	exit 1
 fi
