@@ -32,7 +32,9 @@ function tellusage {
 }
 
 function cacheflush {
-	 blockdev --flushbufs $1
+	 # TODO: use parallelizable sync (which is apparently blockdev --flushbufs but doesn't work)
+	 #blockdev --flushbufs $1
+	 sync
 }
 
 # TODO: some format to specify via command line how many zeros/ones/random/urandom passes to do and in which order? (long-term project)
