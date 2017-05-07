@@ -28,7 +28,6 @@ fi
 CHECK=0
 SHUTDOWN=0
 VALIDHDD=0
-MAXHDD="/dev/sdg"
 
 # Parsing command line arguments
 args=("$@")
@@ -44,7 +43,7 @@ for (( i = 0; i < ${#args[@]}; i++ )); do
         CHECK=1
     elif [[ ( ${args[${i}]} = "-s" ) || ( ${args[${i}]} = "--shutdown" ) ]];
         then SHUTDOWN=1
-    elif [[ ( ${args[${i}]} > "/dev/sd" ) && ( ${args[${i}]} < MAXHDD) ]];
+    elif [[ -b ${args[${i}]} ]];
         then VALIDHDD=1
     else VALIDHDD=0
     fi
@@ -62,7 +61,7 @@ fi
 if [[ $CHECK -eq 1 ]]; then
     for (( i = 0; i < ${#args[@]}; i++ )); do
         if [[ $( echo ${args[${i}]} | tr -d [:alpha:] ) = "//" ]]; then
-            if [[ ( ${args[${i}]} > "/dev/sd" ) && ( ${args[${i}]} < MAXHDD) ]]; then
+            if [[ -b ${args[${i}]} ]]; then
                 echo "===> Running badblocks on ${args[${i}]}"
                 device=$( echo ${args[${i}]} | tr -d '/' )
                 echo `badblocks -s -o ${device}.out ${args[${i}]}`
@@ -75,7 +74,7 @@ fi
 # Hard Drive Redemption
 for (( i = 0; i < ${#args[@]}; i++ )); do
     if [[ $( echo ${args[${i}]} | tr -d [:alpha:] ) = "//" ]]; then
-        if [[ ( ${args[${i}]} > "/dev/sd" ) && ( ${args[${i}]} < MAXHDD) ]]; then
+        if [[ -b ${args[${i}]} ]]; then
             device=$( echo ${args[${i}]} | tr -d '/' )
             badfile="./${device}.out"
             if [[ !( -s $badfile ) ]]; then
