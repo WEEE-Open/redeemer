@@ -26,10 +26,10 @@ IN PARALLELO:
 
 
 TODO:
-  - Implementare un'opzione `-s` per scegliere se spegnere la
+  - [DONE] Implementare un'opzione `-s` per scegliere se spegnere la
     macchina o meno al termine dell'esecuzione dello script.
 
-  - Implementare la lettura da command line della lista di device
+  - [DONE] Implementare la lettura da command line della lista di device
     a cui fare il wipe. Se i device in lista sono più di uno li
     esegue in serie, se il device è uno solo fa normalmente.
     In tal modo, se si vuole fare il wipe di tanti hard disk in
