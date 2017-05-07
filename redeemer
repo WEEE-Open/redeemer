@@ -1,113 +1,160 @@
 #!/bin/bash
 
-'''
-REDEEMER - Hard Disk Drive slaughtering script.
-Author: Stefano Enrico Mendola (aka STE col teschio)
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-
-# Must run as root
-if [[ $EUID -ne 0 ]]; then 
-    echo "error: You must run $0 as root!"
-    exit 1
-fi
+# REDEEMER - Hard Disk Drive slaughtering script.
+# Author: Stefano Enrico Mendola (aka STE col teschio)
+# 
+# 	This program is free software: you can redistribute it and/or modify
+# 	it under the terms of the GNU General Public License as published by
+# 	the Free Software Foundation, either version 3 of the License, or
+# 	(at your option) any later version.
+# 
+# 	This program is distributed in the hope that it will be useful,
+# 	but WITHOUT ANY WARRANTY; without even the implied warranty of
+# 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# 	GNU General Public License for more details.
+# 
+# 	You should have received a copy of the GNU General Public License
+# 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Working parameters
+# Note that in Bash 0 is true and anything else is false, but we're
+# following the C convention and using -eq anyway
 CHECK=0
 SHUTDOWN=0
-VALIDHDD=0
 
-# Parsing command line arguments
-args=("$@")
-for (( i = 0; i < ${#args[@]}; i++ )); do
-    if [[ ( ${args[${i}]} = "-h" ) || ( ${args[${i}]} = "--help" ) ]]; then
-        echo "usage: $0 [OPTION] [DEVICES]"
-        echo "options:"
-        echo "    -c --check    : execute badblocks before redemption"
-        echo "    -s --shutdown : halt after the end of the redemption."
-        echo "    -h --help     : show this screen and quit."
-        exit
-    elif [[ ( ${args[${i}]} = "-c" ) || ( ${args[${i}]} = "--check" )]]; then
-        CHECK=1
-    elif [[ ( ${args[${i}]} = "-s" ) || ( ${args[${i}]} = "--shutdown" ) ]];
-        then SHUTDOWN=1
-    elif [[ -b ${args[${i}]} ]];
-        then VALIDHDD=1
-    else VALIDHDD=0
-    fi
+function tellusage {
+	echo "usage: $0 [OPTIONS] [DEVICES]"
+	exit 4
+}
+
+function zerofill {
+	echo "===> Filling $1 with zeros... (pass $2)"
+	echo `dd if=/dev/zero of=$1 status=progress bs=1M`
+	echo "===> Sync'ing..."
+	sync
+}
+
+function onefill {
+	echo "===> Filling $1 with ones... (pass $2)"
+	echo `tr '\0' '\377' < /dev/zero | dd of=$1 status=progress bs=1M`
+	echo "===> Sync'ing..."
+	sync
+}
+
+function randomfill {
+	echo "===> Filling $1 with random values... (pass $2)"
+	echo `dd if=/dev/random of=$1 status=progress bs=1M`
+	echo "===> Sync'ing..."
+	sync
+}
+
+
+function urandomfill {
+	echo "===> Filling $1 with pseudo-random values... (pass $2)"
+	echo `dd if=/dev/urandom of=$1 status=progress bs=1M`
+	echo "===> Sync'ing..."
+	sync
+}
+
+# https://stackoverflow.com/a/29754866
+getopt --test > /dev/null
+if [[ $? -ne 4 ]]; then
+	echo "I’m sorry, `getopt --test` failed in this environment."
+	exit 1
+fi
+
+options=$(getopt --options csh --longoptions check,shutdown,help --name "$0" -- "$@")
+if [[ $? -ne 0 ]]; then
+	echo "Getopt failed"
+	exit 2
+fi
+
+# Still https://stackoverflow.com/a/29754866
+eval set -- "$options"
+
+# now $1 $2 $... is " -o -p --tions -- /other/parameters"
+while true; do
+	case "$1" in
+		-c|--check)
+			CHECK=1
+			shift
+			;;
+		-s|--shutdown)
+			SHUTDOWN=1
+			shift
+			;;
+		-h|--help)
+			echo "usage: $0 [OPTION] [DEVICES]"
+			echo "options:"
+			echo "	-c --check    : execute badblocks before redemption"
+			echo "	-s --shutdown : halt after the end of the redemption."
+			echo "	-h --help     : show this screen and quit."
+			exit
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			echo "error that should never happen"
+			exit 42
+			;;
+	esac
 done
 
-if [[ $VALIDHDD -eq 0 ]]; then
-    echo "usage: $0 [OPTIONS] [DEVICES]"
-    exit 1
+if [[ $# -lt 1 ]]; then
+	tellusage
 fi
+
+# Must run as root
+#if [[ $EUID -ne 0 ]]; then 
+#	echo "error: You must run $0 as root!"
+#	exit 1
+#fi
 
 # Execute badblocks before redemption
 # This instruction even saves the output of badblocks to
 # a file, in order to determine if the disk is ready for
 # redemption.
 if [[ $CHECK -eq 1 ]]; then
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        if [[ $( echo ${args[${i}]} | tr -d [:alpha:] ) = "//" ]]; then
-            if [[ -b ${args[${i}]} ]]; then
-                echo "===> Running badblocks on ${args[${i}]}"
-                device=$( echo ${args[${i}]} | tr -d '/' )
-                echo `badblocks -s -o ${device}.out ${args[${i}]}`
-            fi
-        fi
-    done
-    echo "===> DONE!"
+	if command -v badblocks >/dev/null 2>&1; then
+		for hdd in "$@"; do
+			if [[ -b $hdd ]]; then
+				echo "===> Running badblocks on $hdd"
+				device=$( echo $hdd | tr -d '/' )
+				echo $( badblocks -s -o ${device}.out $hdd )
+			else
+				echo "$hdd isn't a valid block device"
+				exit 5
+			fi
+		done
+		echo "===> DONE!"
+	else
+		echo "badblocks is not installed"
+		exit 3
+	fi
 fi
 
 # Hard Drive Redemption
-for (( i = 0; i < ${#args[@]}; i++ )); do
-    if [[ $( echo ${args[${i}]} | tr -d [:alpha:] ) = "//" ]]; then
-        if [[ -b ${args[${i}]} ]]; then
-            device=$( echo ${args[${i}]} | tr -d '/' )
-            badfile="./${device}.out"
-            if [[ !( -s $badfile ) ]]; then
-                echo "===> Filling ${args[${i}]} with zeros..."
-                echo `dd if=/dev/zero of=${args[${i}]} status=progress`
-                sync
+for hdd in "$@"; do
+	device=$( echo $hdd | tr -d '/' )
+	badfile="./${hdd}.out"
+	if [[ !( -s $badfile ) ]]; then
 
-                echo "===> Filling ${args[${i}]} with random values..."
-                echo `dd if=/dev/random of=${args[${i}]} status=progress`
-                sync
+		zerofill $hdd 1
+		onefill $hdd 2
+		urandomfill $hdd 3
+		zerofill $hdd 4
 
-                echo "===> Filling ${args[${i}]} with zeros again..."
-                echo `dd if=/dev/zero of=${args[${i}]} status=progress`
-                sync
-
-                echo "===> Filling ${args[${i}]} with random values again..."
-                echo `dd if=/dev/random of=${args[${i}]} status=progress`
-                sync
-                
-                echo "===> Redeeming ${args[${i}]} from his sins..."
-                echo `dd bs=4M if=/dev/zero of=${args[${i}]} status=progress`
-                sync
-
-                echo "===> [OK] Hard drive ${args[${i}]} is now clean!"
-            else
-                echo "error: Hard drive ${args[${i}]} is broken."
-                echo "       Check the file ${device}.out for more details."
-            fi
-        fi
-    fi
+		echo "===> [OK] Hard drive $hdd is now clean!"
+	else
+		echo "error: Hard drive $hdd is broken."
+		echo "	 Check the file ${device}.out for more details."
+	fi
 done
 
 # Shutdown the system at the end of redemption
 if [[ $SHUTDOWN -eq 1 ]]; then
-    echo `shutdown -h now`
+		echo `shutdown -h now`
 fi
+
