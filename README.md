@@ -1,6 +1,6 @@
 # redeemer
 
-Questo script può essere fatto partire da qualsiasi distribuzione linux.
+Questo script può essere fatto partire da qualsiasi distribuzione GNU/Linux.
 L'ideale sarebbe avviarlo come utente "root".
 
 Verificare gli hard disk da redimere usando `fdisk -l`
