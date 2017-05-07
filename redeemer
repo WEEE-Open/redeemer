@@ -107,10 +107,10 @@ if [[ $# -lt 1 ]]; then
 fi
 
 # Must run as root
-#if [[ $EUID -ne 0 ]]; then 
-#	echo "error: You must run $0 as root!"
-#	exit 1
-#fi
+if [[ $EUID -ne 0 ]]; then 
+	echo "error: You must run $0 as root!"
+	exit 1
+fi
 
 # Execute badblocks before redemption
 # This instruction even saves the output of badblocks to
@@ -155,6 +155,6 @@ done
 
 # Shutdown the system at the end of redemption
 if [[ $SHUTDOWN -eq 1 ]]; then
-		echo `shutdown -h now`
+		echo $( shutdown -h now )
 fi
 
