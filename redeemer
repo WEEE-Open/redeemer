@@ -27,38 +27,44 @@ function tellusage {
 	exit 4
 }
 
+function cacheflush {
+	 blockdev --flushbufs $1
+}
+
+# TODO: some format to specify via command line how many zeros/ones/random/urandom passes to do and in which order? (long-term project)
+
 function zerofill {
 	echo "===> Filling $1 with zeros... (pass $2)"
 	echo `dd if=/dev/zero of=$1 status=progress bs=4M`
 	echo "===> Syncing..."
-	sync
+	cacheflush $1
 }
 
 function onefill {
 	echo "===> Filling $1 with ones... (pass $2)"
 	echo `tr '\0' '\377' < /dev/zero | dd of=$1 status=progress bs=4M`
 	echo "===> Syncing..."
-	sync
+	cacheflush $1
 }
 
 function urandomfill {
 	echo "===> Filling $1 with pseudo-random values... (pass $2)"
 	echo `dd if=/dev/urandom of=$1 status=progress bs=4M`
 	echo "===> Syncing..."
-	sync
+	cacheflush $1
 }
 
 function redemption {
-	echo "===> Redeeming $1 from his sins... (pass $2)"
+	echo "===> Redeeming $1 from his sins..."
 	echo `dd if=/dev/zero of=$1 status=progress`
 	echo "===> Syncing..."
-	sync
+	cacheflush $1
 }
 
 # https://stackoverflow.com/a/29754866
 getopt --test > /dev/null
 if [[ $? -ne 4 ]]; then
-	echo "error: `getopt --test` failed in this environment."
+	echo "error: 'getopt --test' failed in this environment."
 	exit 1
 fi
 
@@ -66,6 +72,13 @@ options=$(getopt --options csh --longoptions check,shutdown,help --name "$0" -- 
 if [[ $? -ne 0 ]]; then
 	echo "error: getopt failed."
 	exit 2
+fi
+
+if command -v blockdev >/dev/null 2>&1; then
+	# TODO: invert condition to avoid empty if?
+else
+	echo "error: blockdev not found in \$PATH"
+	exit 6
 fi
 
 # Still https://stackoverflow.com/a/29754866
@@ -129,10 +142,12 @@ if [[ $CHECK -eq 1 ]]; then
 		done
 		echo "===> DONE!"
 	else
-		echo "error: /bin/badblocks not found"
+		echo "error: badblocks not found in \$PATH"
 		exit 3
 	fi
 fi
+
+# TODO: if [[ $# -gt 1 -a GNU_PARALLEL_IS_AVAILABLE ]]; then; run everything in parallel; fi
 
 # Hard Drive Redemption
 for hdd in "$@"; do
@@ -143,7 +158,7 @@ for hdd in "$@"; do
 		zerofill $hdd 1
 		onefill $hdd 2
 		urandomfill $hdd 3
-		redemption $hdd 4
+		redemption $hdd
 
 		echo "===> [OK] Hard drive $hdd is now clean!"
 	else
@@ -151,6 +166,11 @@ for hdd in "$@"; do
 		echo "       Check the file ${device}.out for more details."
 	fi
 done
+
+# synchronization point (end parallel execution)
+# also, run sync fon completely unrelated reasons
+echo "===> [OK] All hard drives cleaned, syncing!"
+sync
 
 # Shutdown the system at the end of redemption
 if [[ $SHUTDOWN -eq 1 ]]; then
