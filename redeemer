@@ -18,38 +18,97 @@ Author: Stefano Enrico Mendola (aka STE col teschio)
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-# L'idea è: per ogni hard disk collegato al sistema...
+# Must run as root
+if [[ $EUID -ne 0 ]]; then 
+    echo "error: You must run $0 as root!"
+    exit 1
+fi
 
-# Riempi il disco di zeri
-echo "====> Filling /dev/sda with zeros"
-dd if=/dev/zero of=/dev/sda status=progress
-sync
+# Working parameters
+CHECK=0
+SHUTDOWN=0
+VALIDHDD=0
+MAXHDD="/dev/sdg"
 
-# Riempi il disco di zeri e uno a caso
-echo "===> Filling /dev/sda with random values"
-dd if=/dev/random of=/dev/sda status=progress
-sync
+# Parsing command line arguments
+args=("$@")
+for (( i = 0; i < ${#args[@]}; i++ )); do
+    if [[ ( ${args[${i}]} = "-h" ) || ( ${args[${i}]} = "--help" ) ]]; then
+        echo "usage: $0 [OPTION] [DEVICES]"
+        echo "options:"
+        echo "    -c --check    : execute badblocks before redemption"
+        echo "    -s --shutdown : halt after the end of the redemption."
+        echo "    -h --help     : show this screen and quit."
+        exit
+    elif [[ ( ${args[${i}]} = "-c" ) || ( ${args[${i}]} = "--check" )]]; then
+        CHECK=1
+    elif [[ ( ${args[${i}]} = "-s" ) || ( ${args[${i}]} = "--shutdown" ) ]];
+        then SHUTDOWN=1
+    elif [[ ( ${args[${i}]} > "/dev/sd" ) && ( ${args[${i}]} < MAXHDD) ]];
+        then VALIDHDD=1
+    else VALIDHDD=0
+    fi
+done
 
-# Riempi il disco di zeri di nuovo
-echo "===> Filling /dev/sda with zeros again"
-dd if=/dev/zero of=/dev/sda status=progress
-sync
+if [[ $VALIDHDD -eq 0 ]]; then
+    echo "usage: $0 [OPTIONS] [DEVICES]"
+    exit 1
+fi
 
-# Riempi il disco di zeri e uno a caso un'altra volta
-echo "===> Filling /dev/sda with random values again"
-dd if=/dev/random of=/dev/sda status=progress
-sync
+# Execute badblocks before redemption
+# This instruction even saves the output of badblocks to
+# a file, in order to determine if the disk is ready for
+# redemption.
+if [[ $CHECK -eq 1 ]]; then
+    for (( i = 0; i < ${#args[@]}; i++ )); do
+        if [[ $( echo ${args[${i}]} | tr -d [:alpha:] ) = "//" ]]; then
+            if [[ ( ${args[${i}]} > "/dev/sd" ) && ( ${args[${i}]} < MAXHDD) ]]; then
+                echo "===> Running badblocks on ${args[${i}]}"
+                device=$( echo ${args[${i}]} | tr -d '/' )
+                echo `badblocks -s -o ${device}.out ${args[${i}]}`
+            fi
+        fi
+    done
+    echo "===> DONE!"
+fi
 
-# E per essere proprio sicuri al 99.9% che nel disco non
-# sia rimasto nemmeno un bit di dato riguardante il poliTo,
-# riempiamo nuovamente l'hard disk di zeri, stavolta a una
-# velocità di scrittura di 4 MiB/s
-echo "===> Redeeming /dev/sda from his sins"
-dd bs=4M if=/dev/zero of=/dev/sda status=progress
-sync
+# Hard Drive Redemption
+for (( i = 0; i < ${#args[@]}; i++ )); do
+    if [[ $( echo ${args[${i}]} | tr -d [:alpha:] ) = "//" ]]; then
+        if [[ ( ${args[${i}]} > "/dev/sd" ) && ( ${args[${i}]} < MAXHDD) ]]; then
+            device=$( echo ${args[${i}]} | tr -d '/' )
+            badfile="./${device}.out"
+            if [[ !( -s $badfile ) ]]; then
+                echo "===> Filling ${args[${i}]} with zeros..."
+                echo `dd if=/dev/zero of=${args[${i}]} status=progress`
+                sync
 
-# E siccome ci teniamo all'ambiente, spegnamo
-# il calcolatore al termine del massacro.
-echo "===> DONE! Shutting down the machine..."
-shutdown -h now
+                echo "===> Filling ${args[${i}]} with random values..."
+                echo `dd if=/dev/random of=${args[${i}]} status=progress`
+                sync
 
+                echo "===> Filling ${args[${i}]} with zeros again..."
+                echo `dd if=/dev/zero of=${args[${i}]} status=progress`
+                sync
+
+                echo "===> Filling ${args[${i}]} with random values again..."
+                echo `dd if=/dev/random of=${args[${i}]} status=progress`
+                sync
+                
+                echo "===> Redeeming ${args[${i}]} from his sins..."
+                echo `dd bs=4M if=/dev/zero of=${args[${i}]} status=progress`
+                sync
+
+                echo "===> [OK] Hard drive ${args[${i}]} is now clean!"
+            else
+                echo "error: Hard drive ${args[${i}]} is broken."
+                echo "       Check the file ${device}.out for more details."
+            fi
+        fi
+    fi
+done
+
+# Shutdown the system at the end of redemption
+if [[ $SHUTDOWN -eq 1 ]]; then
+    echo `shutdown -h now`
+fi
