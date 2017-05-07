@@ -1,18 +1,18 @@
 #!/bin/bash
-
+#
 # REDEEMER - Hard Disk Drive slaughtering script.
 # Author: Stefano Enrico Mendola (aka STE col teschio)
-# 
+#
 # 	This program is free software: you can redistribute it and/or modify
 # 	it under the terms of the GNU General Public License as published by
 # 	the Free Software Foundation, either version 3 of the License, or
 # 	(at your option) any later version.
-# 
+#
 # 	This program is distributed in the hope that it will be useful,
 # 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 # 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # 	GNU General Public License for more details.
-# 
+#
 # 	You should have received a copy of the GNU General Public License
 # 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -21,6 +21,10 @@
 # following the C convention and using -eq anyway
 CHECK=0
 SHUTDOWN=0
+# Bullshit code-style ↑
+DRY_RUN=
+DD_PATH=dd
+SHUTDOWN_PATH=shutdown
 
 function tellusage {
 	echo "usage: $0 [OPTIONS] [DEVICES]"
@@ -35,28 +39,28 @@ function cacheflush {
 
 function zerofill {
 	echo "===> Filling $1 with zeros... (pass $2)"
-	echo `dd if=/dev/zero of=$1 status=progress bs=4M`
+	echo `$DD_PATH if=/dev/zero of=$1 status=progress bs=4M`
 	echo "===> Syncing..."
 	cacheflush $1
 }
 
 function onefill {
 	echo "===> Filling $1 with ones... (pass $2)"
-	echo `tr '\0' '\377' < /dev/zero | dd of=$1 status=progress bs=4M`
+	echo `tr '\0' '\377' < /dev/zero | $DD_PATH of=$1 status=progress bs=4M`
 	echo "===> Syncing..."
 	cacheflush $1
 }
 
 function urandomfill {
 	echo "===> Filling $1 with pseudo-random values... (pass $2)"
-	echo `dd if=/dev/urandom of=$1 status=progress bs=4M`
+	echo `$DD_PATH if=/dev/urandom of=$1 status=progress bs=4M`
 	echo "===> Syncing..."
 	cacheflush $1
 }
 
 function redemption {
 	echo "===> Redeeming $1 from his sins..."
-	echo `dd if=/dev/zero of=$1 status=progress`
+	echo `$DD_PATH if=/dev/zero of=$1 status=progress`
 	echo "===> Syncing..."
 	cacheflush $1
 }
@@ -68,15 +72,13 @@ if [[ $? -ne 4 ]]; then
 	exit 1
 fi
 
-options=$(getopt --options csh --longoptions check,shutdown,help --name "$0" -- "$@")
+options=$(getopt --options csdh --longoptions check,shutdown,dry-run,help --name "$0" -- "$@")
 if [[ $? -ne 0 ]]; then
 	echo "error: getopt failed."
 	exit 2
 fi
 
-if command -v blockdev >/dev/null 2>&1; then
-	# TODO: invert condition to avoid empty if?
-else
+if ! which blockdev > /dev/null; then
 	echo "error: blockdev not found in \$PATH"
 	exit 6
 fi
@@ -95,11 +97,16 @@ while true; do
 			SHUTDOWN=1
 			shift
 			;;
+		-d|--dry-run)
+			DRY_RUN=1
+			shift
+			;;
 		-h|--help)
 			echo "usage: $0 [OPTION] [DEVICES]"
 			echo "options:"
 			echo "	-c --check    : execute badblocks before redemption"
 			echo "	-s --shutdown : halt after the end of the redemption."
+			echo "  -d --dry-run  : only test, no write operations."
 			echo "	-h --help     : show this screen and quit."
 			exit
 			;;
@@ -118,8 +125,13 @@ if [[ $# -lt 1 ]]; then
 	tellusage
 fi
 
+if [ -n $DRY_RUN ]; then
+	DD_PATH='echo dd'
+	SHUTDOWN_PATH='echo shutdown'
+fi
+
 # Must run as root
-if [[ $EUID -ne 0 ]]; then 
+if [ -z $DRY_RUN ] && [[ $EUID -ne 0 ]]; then
 	echo "error: You must run $0 as root!"
 	exit 1
 fi
@@ -174,5 +186,5 @@ sync
 
 # Shutdown the system at the end of redemption
 if [[ $SHUTDOWN -eq 1 ]]; then
-		echo $( shutdown -h now )
+	echo $( $SHUTDOWN_PATH -h now )
 fi
