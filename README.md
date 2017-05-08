@@ -1,12 +1,18 @@
 # redeemer
++[![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
++![Version](https://img.shields.io/badge/version-1.2-yellow.svg)
 
-Questo script può essere fatto partire da qualsiasi distribuzione GNU/Linux.
-L'ideale sarebbe avviarlo come utente "root".
+rischia_di_piantarsi="si pianta di sicuro"  
 
-Verificare gli hard disk da redimere usando `fdisk -l`
-oppure `lsblk`.
+Questo script può essere fatto partire da qualsiasi distribuzione GNU/Linux.  
+Deve essere avviato come utente `root`.  
+Utilizzando solamente `sudo` ${rischia_di_piantarsi} in quanto richiederebbe  
+nuovamente la password una volta completato un passo, e questo avverrà esattamente  
+il venerdì sera quando lancerete questo script poco prima di chiudere il laboratorio,  
+e quando il calcolatore vi richiederà la password voi sarete già a casa vostra,  
+ignari di tutto.
 
-## SINTASSI
+## Sintassi del comando
 
     redeemer [OPZIONI] [CORIACEI_DISCHI]
     le opzioni disponibili sono:
@@ -17,22 +23,13 @@ oppure `lsblk`.
         -n --no-sync  : esegue tutti gli step senza eseguire sync.
         -d --dry-run  : non fa nulla di quello che dovrebbe fare.
 
-Questo script può essere eseguito in serie o in parallelo.
-
-## IN SERIE
-
-Usare il comando `redeemer /dev/sda /dev/sdb ... /dev/sdN`.  
-Se volete bene all'ambiente aggiungete l'opzione `-s`.  
-Se tutti gli hard disk sono, oltre che da pulire,
-da testare, aggiungere l'opzione `-c`.  
-    
-## IN PARALLELO
-
-Lanciare diversi script, uno per ogni hard disk,
-evitando di usare l'opzione `-s`, altrimenti appena finisce
-di pulire il primo, se gli altri non hanno ancora finito il
-computer si spegne prima che gli altri abbiano finito il processo.
-
-## TODO
-
-- [ ] Testare in laboratorio.
+## How it works
+Redeemer esegue una pulizia totale del disco rigido eseguendo 4 cicli di scrittura,  
+una scrittura di zeri, una scrittura di uno, una scrittura di valori pseudo-casuali  
+ed infine un'ultima scrittura di zeri (redenzione).  
+La pulizia viene eseguita in parallelo su tutti i dischi specificati dall'utente.  
+Per far questo si serve di una ricorsione che richiama lo script stesso  
+generando dei sottoprocessi figli, e una volta eseguita questa chiamata ricorsiva  
+lo script attenderà il termine dei processi figli prima di eseguire ulteriori  
+operazioni (come ad esempio lo spegnimento automatico del sistema programmabile  
+tramite l'opzione `-s|--shutdown`).
