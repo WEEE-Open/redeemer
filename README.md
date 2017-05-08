@@ -14,6 +14,7 @@ oppure `lsblk`.
         -c --check    : esegue badblocks sui dischi prima di redimerli.
                         se passano il test, li pulisce, altrimenti
                         lo salta e stampa un messaggio di errore.
+        -n --no-sync  : esegue tutti gli step senza eseguire sync.
         -d --dry-run  : non fa nulla di quello che dovrebbe fare.
 
 Questo script può essere eseguito in serie o in parallelo.
