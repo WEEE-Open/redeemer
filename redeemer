@@ -22,7 +22,7 @@
 CHECK=0
 SHUTDOWN=0
 # Questionable code-style ↑
-NO_SYNC=0
+NO_SYNC=1
 DRY_RUN=0
 DD_PATH=dd
 SHUTDOWN_PATH=shutdown
@@ -99,7 +99,7 @@ while true; do
             shift
             ;;
         -n|--no-sync)
-            NO_SYNC=1
+            NO_SYNC=0
             shift
             ;;
         -d|--dry-run)
