@@ -3,18 +3,18 @@
 # REDEEMER - Hard Disk Drive slaughtering script.
 # Author: Stefano Enrico Mendola (aka STE col teschio)
 #
-# 	This program is free software: you can redistribute it and/or modify
-# 	it under the terms of the GNU General Public License as published by
-# 	the Free Software Foundation, either version 3 of the License, or
-# 	(at your option) any later version.
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
 #
-# 	This program is distributed in the hope that it will be useful,
-# 	but WITHOUT ANY WARRANTY; without even the implied warranty of
-# 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# 	GNU General Public License for more details.
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
 #
-# 	You should have received a copy of the GNU General Public License
-# 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Working parameters
 # Note that in Bash 0 is true and anything else is false, but we're
@@ -22,67 +22,66 @@
 CHECK=0
 SHUTDOWN=0
 # Questionable code-style ↑
+NO_SYNC=0
 DRY_RUN=0
 DD_PATH=dd
 SHUTDOWN_PATH=shutdown
 
 function tellusage {
-	echo "usage: $0 [OPTIONS] [DEVICES]"
-	exit 4
+    echo "usage: $0 [OPTIONS] [DEVICES]"
+    exit 4
 }
 
-function cacheflush {
-	 # TODO: use parallelizable sync (which is apparently blockdev --flushbufs but doesn't work)
-	 #blockdev --flushbufs $1
-	 sync
+function syncdisks {
+    # TODO: use parallelizable sync (which is apparently blockdev --flushbufs but doesn't work)
+    if [[ $NO_SYNC -eq 1 ]]; then
+        echo "===> Syncing..."
+        sync
+    fi
 }
 
 # TODO: some format to specify via command line how many zeros/ones/random/urandom passes to do and in which order? (long-term project)
 
 function zerofill {
-	echo "===> Filling $1 with zeros... (pass $2)"
-	echo `$DD_PATH if=/dev/zero of=$1 status=progress bs=4M`
-	echo "===> Syncing..."
-	cacheflush $1
+    echo "===> Filling $1 with zeros... (pass $2)"
+    echo `$DD_PATH if=/dev/zero of=$1 status=progress bs=4M`
+    syncdisks
 }
 
 function onefill {
-	echo "===> Filling $1 with ones... (pass $2)"
-	echo `tr '\0' '\377' < /dev/zero | $DD_PATH of=$1 status=progress bs=4M`
-	echo "===> Syncing..."
-	cacheflush $1
+    echo "===> Filling $1 with ones... (pass $2)"
+    echo `tr '\0' '\377' < /dev/zero | $DD_PATH of=$1 status=progress bs=4M`
+    syncdisks
 }
 
 function urandomfill {
-	echo "===> Filling $1 with pseudo-random values... (pass $2)"
-	echo `$DD_PATH if=/dev/urandom of=$1 status=progress bs=4M`
-	echo "===> Syncing..."
-	cacheflush $1
+    echo "===> Filling $1 with pseudo-random values... (pass $2)"
+    echo `$DD_PATH if=/dev/urandom of=$1 status=progress bs=4M`
+    syncdisks
 }
 
 function redemption {
-	echo "===> Redeeming $1 from his sins..."
-	echo `$DD_PATH if=/dev/zero of=$1 status=progress`
-	echo "===> Syncing..."
-	cacheflush $1
+    echo "===> Redeeming $1 from his sins..."
+    echo `$DD_PATH if=/dev/zero of=$1 status=progress`
+    syncdisks
 }
 
 # https://stackoverflow.com/a/29754866
 getopt --test > /dev/null
 if [[ $? -ne 4 ]]; then
-	echo "error: 'getopt --test' failed in this environment."
-	exit 1
+    echo "error: 'getopt --test' failed in this environment."
+    exit 1
 fi
 
-options=$(getopt --options csdh --longoptions check,shutdown,dry-run,help --name "$0" -- "$@")
+options=$(getopt --options csndh --longoptions check,shutdown,no-sync,dry-run,help --name "$0" -- "$@")
 if [[ $? -ne 0 ]]; then
-	echo "error: getopt failed."
-	exit 2
+    echo "error: getopt failed."
+    exit 2
 fi
 
 if ! which blockdev > /dev/null; then
-	echo "error: blockdev not found in \$PATH"
-	exit 6
+    echo "error: blockdev not found in \$PATH"
+    exit 6
 fi
 
 # Still https://stackoverflow.com/a/29754866
@@ -90,52 +89,57 @@ eval set -- "$options"
 
 # now $1 $2 $... is " -o -p --tions -- /other/parameters"
 while true; do
-	case "$1" in
-		-c|--check)
-			CHECK=1
-			shift
-			;;
-		-s|--shutdown)
-			SHUTDOWN=1
-			shift
-			;;
-		-d|--dry-run)
-			DRY_RUN=1
-			shift
-			;;
-		-h|--help)
-			echo "usage: $0 [OPTION] [DEVICES]"
-			echo "options:"
-			echo "	-c --check    : execute badblocks before redemption"
-			echo "	-s --shutdown : halt after the end of the redemption."
-			echo "  -d --dry-run  : only test, no write operations."
-			echo "	-h --help     : show this screen and quit."
-			exit
-			;;
-		--)
-			shift
-			break
-			;;
-		*)
-			echo "error that should never happen"
-			exit 42
-			;;
-	esac
+    case "$1" in
+        -c|--check)
+            CHECK=1
+            shift
+            ;;
+        -s|--shutdown)
+            SHUTDOWN=1
+            shift
+            ;;
+        -n|--no-sync)
+            NO_SYNC=1
+            shift
+            ;;
+        -d|--dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        -h|--help)
+            echo "usage: $0 [OPTION] [DEVICES]"
+            echo "options:"
+            echo "  -c  --check    : execute badblocks before redemption"
+            echo "  -s  --shutdown : halt after the end of the redemption."
+            echo "  -n  --no-sync  : execute steps without syncing disks."
+            echo "  -d  --dry-run  : only test, no write operations."
+            echo "  -h  --help     : show this screen and quit."
+            exit
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "error that should never happen"
+            exit 42
+            ;;
+    esac
 done
 
 if [[ $# -lt 1 ]]; then
-	tellusage
+    tellusage
 fi
 
 if [[ $DRY_RUN -eq 1 ]]; then
-	DD_PATH='echo dd'
-	SHUTDOWN_PATH='echo shutdown'
+    DD_PATH='echo dd'
+    SHUTDOWN_PATH='echo shutdown'
 fi
 
 # Must run as root
 if [[ $DRY_RUN -ne 1 ]] && [[ $EUID -ne 0 ]]; then
-	echo "error: You must run $0 as root!"
-	exit 1
+    echo "error: You must run $0 as root!"
+    exit 1
 fi
 
 # Execute badblocks before redemption
@@ -143,50 +147,50 @@ fi
 # a file, in order to determine if the disk is ready for
 # redemption.
 if [[ $CHECK -eq 1 ]]; then
-	if command -v badblocks >/dev/null 2>&1; then
-		for hdd in "$@"; do
-			if [[ -b $hdd ]]; then
-				echo "===> Running badblocks on $hdd"
-				device=$( echo $hdd | tr -d '/' )
-				echo $( badblocks -s -o ${device}.out $hdd )
-			else
-				echo "error: $hdd isn't a valid block device"
-				exit 5
-			fi
-		done
-		echo "===> DONE!"
-	else
-		echo "error: badblocks not found in \$PATH"
-		exit 3
-	fi
+    if command -v badblocks >/dev/null 2>&1; then
+        for hdd in "$@"; do
+            if [[ -b $hdd ]]; then
+                echo "===> Running badblocks on $hdd"
+                device=$( echo $hdd | tr -d '/' )
+                echo $( badblocks -s -o ${device}.out $hdd )
+            else
+                echo "error: $hdd isn't a valid block device"
+                exit 5
+            fi
+        done
+        echo "===> DONE!"
+    else
+        echo "error: badblocks not found in \$PATH"
+        exit 3
+    fi
 fi
 
 # TODO: if [[ $# -gt 1 -a GNU_PARALLEL_IS_AVAILABLE ]]; then; run everything in parallel; fi
 
 # Hard Drive Redemption
 for hdd in "$@"; do
-	device=$( echo $hdd | tr -d '/' )
-	badfile="./${hdd}.out"
-	if [[ !( -s $badfile ) ]]; then
+    device=$( echo $hdd | tr -d '/' )
+    badfile="./${hdd}.out"
+    if [[ !( -s $badfile ) ]]; then
 
-		zerofill $hdd 1
-		onefill $hdd 2
-		urandomfill $hdd 3
-		redemption $hdd
+        zerofill $hdd 1
+        onefill $hdd 2
+        urandomfill $hdd 3
+        redemption $hdd
 
-		echo "===> [OK] Hard drive $hdd is now clean!"
-	else
-		echo "error: Hard drive $hdd is broken."
-		echo "       Check the file ${device}.out for more details."
-	fi
+        echo "===> [OK] Hard drive $hdd is now clean!"
+    else
+        echo "error: Hard drive $hdd is broken."
+        echo "       Check the file ${device}.out for more details."
+    fi
 done
 
 # synchronization point (end parallel execution)
 # also, run sync fon completely unrelated reasons
 echo "===> [OK] All hard drives cleaned, syncing!"
-sync
+syncdisks
 
 # Shutdown the system at the end of redemption
 if [[ $SHUTDOWN -eq 1 ]]; then
-	echo $( $SHUTDOWN_PATH -h now )
+    echo $( $SHUTDOWN_PATH -h now )
 fi
