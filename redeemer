@@ -22,6 +22,7 @@
 CHECK=0
 SHUTDOWN=0
 # Questionable code-style ↑
+NO_SYNC=0
 DRY_RUN=0
 DD_PATH=dd
 SHUTDOWN_PATH=shutdown
@@ -32,9 +33,11 @@ function tellusage {
 }
 
 function cacheflush {
-	 # TODO: use parallelizable sync (which is apparently blockdev --flushbufs but doesn't work)
-	 #blockdev --flushbufs $1
-	 sync
+	# TODO: use parallelizable sync (which is apparently blockdev --flushbufs but doesn't work)
+	#blockdev --flushbufs $1
+	if [[ $NO_SYNC -eq 1 ]]; then
+		sync
+	fi
 }
 
 # TODO: some format to specify via command line how many zeros/ones/random/urandom passes to do and in which order? (long-term project)
@@ -99,6 +102,10 @@ while true; do
 			SHUTDOWN=1
 			shift
 			;;
+		-ns|--no-sync)
+			NO_SYNC=1
+			shift
+			;;
 		-d|--dry-run)
 			DRY_RUN=1
 			shift
@@ -106,10 +113,11 @@ while true; do
 		-h|--help)
 			echo "usage: $0 [OPTION] [DEVICES]"
 			echo "options:"
-			echo "	-c --check    : execute badblocks before redemption"
-			echo "	-s --shutdown : halt after the end of the redemption."
-			echo "  -d --dry-run  : only test, no write operations."
-			echo "	-h --help     : show this screen and quit."
+			echo "	-c  --check    : execute badblocks before redemption"
+			echo "	-s  --shutdown : halt after the end of the redemption."
+			echo "  -ns --no-sync  : execute steps without syncing disks."
+			echo "  -d  --dry-run  : only test, no write operations."
+			echo "	-h  --help     : show this screen and quit."
 			exit
 			;;
 		--)
