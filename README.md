@@ -1,4 +1,6 @@
 # redeemer
+[![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
+![Version](https://img.shields.io/badge/version-1.2-yellow.svg)
 
 Questo script può essere fatto partire da qualsiasi distribuzione GNU/Linux.
 L'ideale sarebbe avviarlo come utente "root".
