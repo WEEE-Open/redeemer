@@ -59,6 +59,14 @@ function redemption {
 	#syncdisks
 }
 
+function shutdownifnecessary {
+	# Shutdown the system at the end of redemption
+	if [[ $SHUTDOWN -eq 1 ]]; then
+		echo "===> Shutting down"
+		echo $( $SHUTDOWN_PATH -h now )
+	fi
+}
+
 # https://stackoverflow.com/a/29754866
 getopt --test > /dev/null
 if [[ $? -ne 4 ]]; then
@@ -76,22 +84,27 @@ fi
 eval set -- "$options"
 
 # now $1 $2 $... is " -o -p --tions -- /other/parameters"
+parameters=""
 while true; do
 	case "$1" in
 		-c|--check)
 			CHECK=1
+			parameters="$parameters $1"
 			shift
 			;;
 		-s|--shutdown)
 			SHUTDOWN=1
+			# do not add to $parameters!
 			shift
 			;;
 		-n|--no-sync)
 			NO_SYNC=1
+			parameters="$parameters $1"
 			shift
 			;;
 		-d|--dry-run)
 			DRY_RUN=1
+			parameters="$parameters $1"
 			shift
 			;;
 		-h|--help)
@@ -105,6 +118,7 @@ while true; do
 			exit
 			;;
 		--)
+			parameters="$parameters $1"
 			shift
 			break
 			;;
@@ -124,6 +138,13 @@ if [[ $DRY_RUN -eq 1 ]]; then
 	SHUTDOWN_PATH='echo shutdown'
 fi
 
+if [[ $CHECK -eq 1 ]]; then
+	if ! which badblocks > /dev/null; then
+		echo "error: badblocks not found in \$PATH"
+		exit 3
+	fi
+fi
+
 # Must run as root
 if [[ $DRY_RUN -ne 1 ]] && [[ $EUID -ne 0 ]]; then
 	echo "error: You must run $0 as root!"
@@ -134,32 +155,43 @@ if [[ $NO_SYNC -eq 1 ]]; then
 	CONV=""
 fi
 
-for hdd in "$@"; do
-	if ! [[ -b $hdd ]]; then
-		echo "error: $hdd isn't a valid block device"
-		exit 5
-	fi
-done
+if [[ $DRY_RUN -ne 1 ]]; then
+	for hdd in "$@"; do
+		if ! [[ -b $hdd ]]; then
+			echo "error: $hdd isn't a valid block device"
+			exit 5
+		fi
+	done
+fi
 
 # Execute badblocks before redemption
 # This instruction even saves the output of badblocks to
 # a file, in order to determine if the disk is ready for
 # redemption.
-if [[ $CHECK -eq 1 ]]; then
-	if command -v badblocks >/dev/null 2>&1; then
-		for hdd in "$@"; do
-			echo "===> Running badblocks on $hdd"
-			device=$( echo $hdd | tr -d '/' )
-			echo $( badblocks -s -o ${device}.out $hdd )
-		done
-		echo "===> DONE!"
-	else
-		echo "error: badblocks not found in \$PATH"
-		exit 3
-	fi
+
+if [[ $# -gt 1 ]]; then
+	for hdd in "$@"; do
+		$0 $parameters $hdd &
+	done
+	wait
+	# synchronization point (end parallel execution)
+	# also, run sync fon completely unrelated reasons
+	echo "===> Sync all disks"
+	sync
+	echo "===> [OK] All jobs completed successfully."
+	shutdownifnecessary
+	exit
 fi
 
-# TODO: if [[ $# -gt 1 -a GNU_PARALLEL_IS_AVAILABLE ]]; then; run everything in parallel; fi
+if [[ $CHECK -eq 1 ]]; then
+	for hdd in "$@"; do
+		echo "===> Running badblocks on $hdd"
+		device=$( echo $hdd | tr -d '/' )
+		echo $( badblocks -s -o ${device}.out $hdd )
+	done
+	echo "===> DONE!"
+fi
+
 
 # Hard Drive Redemption
 for hdd in "$@"; do
@@ -175,18 +207,8 @@ for hdd in "$@"; do
 		echo "===> [OK] Hard drive $hdd is now clean!"
 	else
 		echo "error: Hard drive $hdd is broken."
-		echo "	   Check the file ${device}.out for more details."
+		echo "	     Check the file ${device}.out for more details."
 	fi
 done
 
-# synchronization point (end parallel execution)
-# also, run sync fon completely unrelated reasons
-echo "===> Sync all disks"
-sync
-echo "===> [OK] All jobs completed successfully."
-
-# Shutdown the system at the end of redemption
-if [[ $SHUTDOWN -eq 1 ]]; then
-	echo "===> Shutting down"
-	echo $( $SHUTDOWN_PATH -h now )
-fi
+shutdownifnecessary
