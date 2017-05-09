@@ -36,5 +36,5 @@ tramite l'opzione `-s|--shutdown`).
 
 ## ToDo
 
-- [ ] Aggiungere un'opzione -o|--output-file per dare la possibilità di salvare
+- [ ] Aggiungere un'opzione `-o|--output-file` per dare la possibilità di salvare
 su file l'output dello script.
