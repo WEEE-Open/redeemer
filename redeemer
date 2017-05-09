@@ -199,6 +199,7 @@ for hdd in "$@"; do
 	badfile="./${hdd}.out"
 	if [[ !( -s $badfile ) ]]; then
 
+		rm $badfile
 		zerofill $hdd 1
 		onefill $hdd 2
 		urandomfill $hdd 3
