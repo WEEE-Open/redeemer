@@ -33,3 +33,8 @@ generando dei sottoprocessi figli, e una volta eseguita questa chiamata ricorsiv
 lo script attenderà il termine dei processi figli prima di eseguire ulteriori  
 operazioni (come ad esempio lo spegnimento automatico del sistema programmabile  
 tramite l'opzione `-s|--shutdown`).
+
+## ToDo
+
+- [ ] Aggiungere un'opzione -o|--output-file per dare la possibilità di salvare
+su file l'output dello script.
