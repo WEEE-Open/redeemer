@@ -37,25 +37,25 @@ function tellusage {
 
 function zerofill {
 	echo "===> Filling $1 with zeros... (pass $2)"
-	echo $($DD_PATH if=/dev/zero of=$1 status=progress bs=4M $CONV)
+	echo $($DD_PATH if=/dev/zero of=$1 status=progress bs=16M $CONV)
 	#syncdisks
 }
 
 function onefill {
 	echo "===> Filling $1 with ones... (pass $2)"
-	echo $(tr '\0' '\377' < /dev/zero | $DD_PATH of=$1 status=progress bs=4M $CONV)
+	echo $(tr '\0' '\377' < /dev/zero | $DD_PATH of=$1 status=progress bs=16M $CONV)
 	#syncdisks
 }
 
 function urandomfill {
 	echo "===> Filling $1 with pseudo-random values... (pass $2)"
-	echo $($DD_PATH if=/dev/urandom of=$1 status=progress bs=4M $CONV)
+	echo $($DD_PATH if=/dev/urandom of=$1 status=progress bs=16M $CONV)
 	#syncdisks
 }
 
 function redemption {
 	echo "===> Redeeming $1 from its sins..."
-	echo $($DD_PATH if=/dev/zero of=$1 status=progress bs=4M $CONV)
+	echo $($DD_PATH if=/dev/zero of=$1 status=progress bs=16M $CONV)
 	#syncdisks
 }
 
