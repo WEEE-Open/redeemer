@@ -16,16 +16,15 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Working parameters
-# Note that in Bash 0 is true and anything else is false, but we're
-# following the C convention and using -eq anyway
-CHECK=0
-SHUTDOWN=0
-# Questionable code-style ↑
-NO_SYNC=0
-DRY_RUN=0
+# Operational parameters
+CHECK=false
+SHUTDOWN=false
+NO_SYNC=false
+DRY_RUN=false
+LAVIANO=false
 DD_PATH=dd
 SHUTDOWN_PATH=shutdown
+BADBLOCKS_PATH=badblocks
 CONV="conv=fsync"
 
 function tellusage {
@@ -33,7 +32,8 @@ function tellusage {
 	exit 4
 }
 
-# TODO: some format to specify via command line how many zeros/ones/random/urandom passes to do and in which order? (long-term project)
+# ToDo: some format to specify via command line how many
+# zeros/ones/random/urandom passes to do and in which order? (LTP)
 
 function zerofill {
 	echo "===> Filling $1 with zeros... (pass $2)"
@@ -61,7 +61,7 @@ function redemption {
 
 function shutdownifnecessary {
 	# Shutdown the system at the end of redemption
-	if [[ $SHUTDOWN -eq 1 ]]; then
+	if $SHUTDOWN; then
 		echo "===> Shutting down"
 		echo $( $SHUTDOWN_PATH -h now )
 	fi
@@ -74,7 +74,7 @@ if [[ $? -ne 4 ]]; then
 	exit 1
 fi
 
-options=$(getopt --options csndh --longoptions check,shutdown,no-sync,dry-run,help --name "$0" -- "$@")
+options=$(getopt --options cslndh --longoptions check,shutdown,laviano,no-sync,dry-run,help --name "$0" -- "$@")
 if [[ $? -ne 0 ]]; then
 	echo "error: getopt failed."
 	exit 2
@@ -88,22 +88,27 @@ parameters=""
 while true; do
 	case "$1" in
 		-c|--check)
-			CHECK=1
+			CHECK=true
 			parameters="$parameters $1"
 			shift
 			;;
 		-s|--shutdown)
-			SHUTDOWN=1
+			SHUTDOWN=true
 			# do not add to $parameters!
 			shift
 			;;
+		-l|--laviano)
+			LAVIANO=true
+			parameters="$parameters $1"
+			shift
+			;;
 		-n|--no-sync)
-			NO_SYNC=1
+			NO_SYNC=true
 			parameters="$parameters $1"
 			shift
 			;;
 		-d|--dry-run)
-			DRY_RUN=1
+			DRY_RUN=true
 			parameters="$parameters $1"
 			shift
 			;;
@@ -112,6 +117,7 @@ while true; do
 			echo "options:"
 			echo "  -c  --check    : execute badblocks before redemption"
 			echo "  -s  --shutdown : halt after the end of the redemption."
+			echo "  -l  --laviano  : execute only a zerofill pass."
 			echo "  -n  --no-sync  : execute steps without syncing disks."
 			echo "  -d  --dry-run  : print output only, no write operations."
 			echo "  -h  --help     : show this screen and quit."
@@ -133,12 +139,13 @@ if [[ $# -lt 1 ]]; then
 	tellusage
 fi
 
-if [[ $DRY_RUN -eq 1 ]]; then
+if $DRY_RUN; then
 	DD_PATH='echo dd'
 	SHUTDOWN_PATH='echo shutdown'
+	BADBLOCKS_PATH='echo badblocks'
 fi
 
-if [[ $CHECK -eq 1 ]]; then
+if $CHECK; then
 	if ! which badblocks > /dev/null; then
 		echo "error: badblocks not found in \$PATH"
 		exit 3
@@ -146,16 +153,16 @@ if [[ $CHECK -eq 1 ]]; then
 fi
 
 # Must run as root
-if [[ $DRY_RUN -ne 1 ]] && [[ $EUID -ne 0 ]]; then
+if ( !($DRY_RUN) && [[ $EUID -ne 0 ]] ); then
 	echo "error: You must run $0 as root!"
 	exit 1
 fi
 
-if [[ $NO_SYNC -eq 1 ]]; then
+if $NO_SYNC; then
 	CONV=""
 fi
 
-if [[ $DRY_RUN -ne 1 ]]; then
+if !($DRY_RUN); then
 	for hdd in "$@"; do
 		if ! [[ -b $hdd ]]; then
 			echo "error: $hdd isn't a valid block device"
@@ -183,13 +190,13 @@ if [[ $# -gt 1 ]]; then
 	exit
 fi
 
-if [[ $CHECK -eq 1 ]]; then
+if $CHECK; then
 	for hdd in "$@"; do
 		echo "===> Running badblocks on $hdd"
 		device=$( echo $hdd | tr -d '/' )
-		echo $( badblocks -s -o ${device}.out $hdd )
+		echo $( $BADBLOCKS_PATH -s -o ${device}.out $hdd )
 	done
-	echo "===> DONE!"
+	echo "===> DONE! [ badblocks $hdd ]"
 fi
 
 
@@ -199,15 +206,19 @@ for hdd in "$@"; do
 	badfile="./${hdd}.out"
 	if [[ !( -s $badfile ) ]]; then
 
-		rm "${device}.out"
-		zerofill $hdd 1
-		onefill $hdd 2
-		urandomfill $hdd 3
+		if $CHECK && !($DRY_RUN); then
+			rm "${device}.out"
+		fi
+		if !($LAVIANO); then
+			zerofill $hdd 1
+			onefill $hdd 2
+			urandomfill $hdd 3
+		fi
 		redemption $hdd
 
-		echo "===> [OK] Hard drive $hdd is now clean!"
+		echo "===> [OK] $hdd is now clean!"
 	else
-		echo "error: Hard drive $hdd is broken."
+		echo "error: $hdd is broken."
 		echo "	     Check the file ${device}.out for more details."
 	fi
 done
