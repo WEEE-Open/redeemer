@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# REDEEMER - Hard Disk Drive slaughtering script.
-# Author: Stefano Enrico Mendola (aka STE col teschio)
+# REDEEMER - Hard Disk Drive slaughtering shell script.
+# Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -23,9 +23,13 @@ NO_SYNC=false
 DRY_RUN=false
 LAVIANO=false
 DD_PATH=dd
+
+# Variables for DRY_RUN
 SHUTDOWN_PATH=shutdown
 BADBLOCKS_PATH=badblocks
 CONV="conv=fsync"
+
+VERSION="1.3"
 
 function tellusage {
 	echo "usage: $0 [OPTIONS] [DEVICES]"
@@ -113,6 +117,12 @@ while true; do
 			shift
 			;;
 		-h|--help)
+			echo "REDEEMER v${VERSION} - Hard Disk Drive slaughtering shell script."
+        	echo "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)"
+        	echo "Copyright (C) 2017 WeeeOpen - Politecnico di Torino"
+        	echo "This program comes with ABSOLUTELY NO WARRANTY."
+        	echo "Since this is a free software, you are welcome to"
+			echo "redistribute it under the terms of the GNU GPLv3."; echo
 			echo "usage: $0 [OPTIONS] [DEVICES]"
 			echo "options:"
 			echo "  -c  --check    : execute badblocks before redemption"
