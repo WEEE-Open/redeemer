@@ -15,15 +15,15 @@ ignari di tutto.
 ## Sintassi del comando  
     redeemer [OPZIONI] [CORIACEI_DISCHI]  
     le opzioni disponibili sono:  
-        `-s --shutdown` : spegne il computer al termine dell'esecuzione.  
-        `-c --check`    : esegue badblocks sui dischi prima di redimerli.  
-                          se passano il test, li pulisce, altrimenti  
-                          lo salta e stampa un messaggio di errore.  
-        `-l --laviano`  : esegue solo la redenzione  
-                          (Laviano dice che è sufficiente, a meno che l'hard  
-                           disk in questione non sia un Apple Profile da 5 MB)  
-        `-n --no-sync`  : esegue tutti gli step senza eseguire sync.  
-        `-d --dry-run`  : non fa nulla di quello che dovrebbe fare.  
+        -s --shutdown : spegne il computer al termine dell'esecuzione.  
+        -c --check    : esegue badblocks sui dischi prima di redimerli.  
+                        se passano il test, li pulisce, altrimenti  
+                        lo salta e stampa un messaggio di errore.  
+        -l --laviano  : esegue solo la redenzione  
+                        (Laviano dice che è sufficiente, a meno che l'hard  
+                         disk in questione non sia un Apple Profile da 5 MB)  
+        -n --no-sync  : esegue tutti gli step senza eseguire sync.  
+        -d --dry-run  : non fa nulla di quello che dovrebbe fare.  
 
 ## How it works
 Redeemer esegue una pulizia totale del disco rigido eseguendo 4 cicli di scrittura,  
