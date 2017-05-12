@@ -222,8 +222,8 @@ for hdd in "$@"; do
 		if !($LAVIANO); then
 			zerofill $hdd 1
 			onefill $hdd 2
-			urandomfill $hdd 3
 		fi
+		urandomfill $hdd 3
 		redemption $hdd
 
 		echo "===> [OK] $hdd is now clean!"
